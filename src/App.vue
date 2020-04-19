@@ -1,9 +1,9 @@
 <template>
   <div id="app">
-    <div class="outer" v-if="boxShow">
-      <transition name="slide-fade">
+    <transition name="slide-fade">
         <div ref="toast" v-show="toastShow" class="toast">{{this.message}}</div>
       </transition>
+    <div class="outer" v-if="boxShow">
       <div class="inputBox">
         请输入问卷编号
         <br />
@@ -17,38 +17,54 @@
       <div class="title">{{questionnaireData.name}}</div>
       <div class="question-box">
         <el-form label-width="80px">
-          <el-form-item v-for="(item,index) in questionnaireData.questions" :key="index" :label="'第'+(index+1)+'题:'">
+          <el-form-item
+            v-for="(item,index) in questionnaireData.questions"
+            :key="index"
+            :label="'第'+(index+1)+'题:'"
+          >
             <template v-if="item.questionType==1">
-              {{item.name}}<br>
-              <el-radio-group v-model="ansower.index">
-                <el-radio v-for="(item1,index1) in item.options" :key="index1+1" :label="item1.content"></el-radio>
+              {{item.name}}
+              <br />
+              <el-radio-group v-model="answer[index]">
+                <el-radio
+                  v-for="(item1,index1) in item.options"
+                  :key="index1+'1'"
+                  :label="index1"
+                >{{item1.content}}</el-radio>
               </el-radio-group>
             </template>
             <template v-if="item.questionType==2">
-              {{item.name}}<br>
-              <el-checkbox-group v-model="ansower.index">
-                <el-checkbox v-for="(item1,index1) in item.options" :key="index1+1" :label="item1.content"></el-checkbox>
+              {{item.name}}
+              <br />
+              <el-checkbox-group v-model="answer[index]">
+                <el-checkbox
+                  v-for="(item1,index1) in item.options"
+                  :key="index1+'2'"
+                  :label="index1"
+                >{{item1.content}}</el-checkbox>
               </el-checkbox-group>
             </template>
             <template v-if="item.questionType==3">
-              {{item.name}}<br>
-              <el-input type="textarea" :rows="3" v-model="ansower.index"></el-input>
+              {{item.name}}
+              <br />
+              <el-input type="textarea" :rows="3" v-model="answer[index]"></el-input>
             </template>
           </el-form-item>
         </el-form>
+        <el-button class="btn1" type="primary" @click="handlerSubmit">上传问卷</el-button>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { get } from "./http/utils";
+import { get,post_json } from "./http/utils";
 
 export default {
   name: "App",
   data() {
     return {
-      ansower: {},
+      answer: [],
       id: "",
       boxShow: true,
       toastShow: false,
@@ -76,6 +92,11 @@ export default {
         .then(res => {
           if (res.data.code == 200) {
             this.questionnaireData = res.data.data;
+            this.questionnaireData.questions.forEach((item, index) => {
+              if (item.questionType == 2) {
+                this.answer[index] = [];
+              }
+            });
             this.toast("获取问卷成功");
             this.boxShow = false;
           } else {
@@ -85,6 +106,31 @@ export default {
         .catch(() => {
           this.toast("未获取问卷", "error");
         });
+    },
+    handlerSubmit() {
+      let arr = [];
+      console.log(this.questionnaireData)
+      this.questionnaireData.questions.forEach((item,index) => {
+        arr.push({
+          questionId: item.id,
+          answer:this.answer[index] instanceof Array?this.answer[index].join(''):this.answer[index]
+        });
+      });
+      console.log(arr)
+      post_json('/api/question/answer',{
+        id:this.questionnaireData.id,
+        answers:arr
+      }).then((res)=>{
+        console.log(res.data.code, '---------')
+        if(res.data.code==200){
+          console.log(12341)
+          console.log(this)
+          this.toast("上传成功");
+          this.boxShow = true
+        }else{
+           this.toast('上传失败', "error");
+        }
+      })
     }
   }
 };
@@ -147,13 +193,20 @@ export default {
 .inner {
   margin: 0 auto;
   width: 100%;
-  max-width: 800px;
+  box-sizing: border-box;
   padding: 10px;
+  max-width: 800px;
 }
-@media only screen and (min-width: 1029px){
+@media only screen and (min-width: 1029px) {
   .inner {
     border: 1px solid #ededed;
-    border-radius:5px;
+    border-radius: 5px;
   }
+}
+.btn1 {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 10px;
 }
 </style>
